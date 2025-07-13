@@ -46,6 +46,7 @@ services:
       POSTGRES_DB: airflow
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
       interval: 5s
@@ -54,7 +55,8 @@ services:
 
   # 3. 워크플로우 오케스트레이터: Airflow
   airflow-init:
-    image: apache/airflow:2.8.1
+    build:
+      context: ./dags
     container_name: airflow_init
     depends_on:
       postgres:
@@ -71,7 +73,8 @@ services:
       - ./plugins:/opt/airflow/plugins
 
   airflow-webserver:
-    image: apache/airflow:2.8.1
+    build:
+      context: ./dags
     container_name: airflow_webserver
     ports:
       - "8080:8080"
@@ -88,7 +91,8 @@ services:
       - ./plugins:/opt/airflow/plugins
 
   airflow-scheduler:
-    image: apache/airflow:2.8.1
+    build:
+      context: ./dags
     container_name: airflow_scheduler
     depends_on:
       - airflow-init
@@ -102,33 +106,35 @@ services:
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
 
-  # # 4. 뉴스 수집기
-  # producer:
-  #   container_name: news_producer
-  #   build:
-  #     context: ./producer
-  #   # .env 파일의 환경변수를 컨테이너 내부로 주입
-  #   env_file:
-  #     - ./.env
-  #   depends_on:
-  #     - kafka
-  #   volumes:
-  #     - ./producer:/usr/src/app
+  # 4. 뉴스 수집기
+  producer:
+    container_name: news_producer
+    build:
+      context: ./producer
+    env_file:
+      - ./.env
+    depends_on:
+      kafka:
+        condition: service_started
+    volumes:
+      - ./producer:/usr/src/app
+    restart: unless-stopped
 
-  # # 5. 대시보드
-  # streamlit:
-  #   container_name: dashboard
-  #   build:
-  #     context: ./streamlit
-  #   # .env 파일의 환경변수를 컨테이너 내부로 주입
-  #   env_file:
-  #     - ./.env
-  #   ports:
-  #     - "8501:8501"
-  #   depends_on:
-  #     - postgres
-  #   volumes:
-  #     - ./streamlit:/app
+  # 5. 대시보드
+  streamlit:
+    container_name: dashboard
+    build:
+      context: ./streamlit
+    env_file:
+      - ./.env
+    ports:
+      - "8501:8501"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./streamlit:/app
+    restart: unless-stopped
 
 # 데이터 영속성을 위한 볼륨 정의
 volumes:

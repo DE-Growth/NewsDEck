@@ -22,11 +22,11 @@ NAVER_API_URL = "https://openapi.naver.com/v1/search/news.json"
 
 # [로컬 개발용] 로컬 PC에서 직접 producer.py를 실행할 때 사용합니다.
 # Docker 외부에서 Kafka 컨테이너(localhost:9093)로 접속합니다.
-KAFKA_BROKER = "localhost:9093"
+# KAFKA_BROKER = "localhost:9093"
 
 # [도커 배포용] Docker Compose로 producer 컨테이너를 실행할 때 사용합니다.
 # Docker 내부 네트워크를 통해 다른 컨테이너(kafka:9092)로 접속합니다.
-# KAFKA_BROKER = 'kafka:9092'
+KAFKA_BROKER = 'kafka:9092'
 
 # -------------------------------------------------------------------
 
