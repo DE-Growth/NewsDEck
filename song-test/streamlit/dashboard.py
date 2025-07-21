@@ -12,18 +12,6 @@ from kafka import KafkaConsumer
 import threading
 import time
 import os
-import pytz
-
-# 한국 시간대 설정
-KST = pytz.timezone('Asia/Seoul')
-
-def get_korean_now():
-    """현재 한국 시간을 반환"""
-    return datetime.now(KST)
-
-def get_korean_time_hours_ago(hours):
-    """현재 한국 시간에서 N시간 전 시간을 반환"""
-    return get_korean_now() - timedelta(hours=hours)
 
 # Streamlit 페이지 설정
 st.set_page_config(
@@ -120,15 +108,12 @@ def load_news_data(hours=24):
         if not engine:
             return pd.DataFrame()
         
-        # 한국 시간 기준으로 N시간 전 시간 계산
-        korean_time_ago = get_korean_time_hours_ago(hours)
-        
         query = f"""
         SELECT 
             id, keyword, title, link, description, 
             pub_date, collected_at, processed_at
         FROM news_articles 
-        WHERE collected_at >= '{korean_time_ago.strftime('%Y-%m-%d %H:%M:%S')}'::timestamp
+        WHERE collected_at >= NOW() - INTERVAL '{hours} hours'
         ORDER BY collected_at DESC
         LIMIT 1000
         """
@@ -194,27 +179,26 @@ def load_statistics():
         print(f"전체 통계 결과: {dict(overall_stats) if overall_stats else 'None'}")
         
         print("24시간 통계 쿼리 실행 중...")
-        # 24시간 통계 (한국 시간 기준)
-        korean_24h_ago = get_korean_time_hours_ago(24)
-        cursor.execute(f"""
+        # 24시간 통계
+        cursor.execute("""
             SELECT 
                 COUNT(*) as daily_articles,
                 COUNT(DISTINCT keyword) as daily_keywords
             FROM news_articles 
-            WHERE collected_at >= '{korean_24h_ago.strftime('%Y-%m-%d %H:%M:%S')}'::timestamp
+            WHERE collected_at >= NOW() - INTERVAL '24 hours'
         """)
         daily_stats = cursor.fetchone()
         print(f"24시간 통계 결과: {dict(daily_stats) if daily_stats else 'None'}")
         
         print("키워드별 통계 쿼리 실행 중...")
-        # 키워드별 통계 (한국 시간 기준)
-        cursor.execute(f"""
+        # 키워드별 통계
+        cursor.execute("""
             SELECT 
                 keyword, 
                 COUNT(*) as count,
                 MAX(collected_at) as last_collected
             FROM news_articles 
-            WHERE collected_at >= '{korean_24h_ago.strftime('%Y-%m-%d %H:%M:%S')}'::timestamp
+            WHERE collected_at >= NOW() - INTERVAL '24 hours'
             GROUP BY keyword 
             ORDER BY count DESC
             LIMIT 20
@@ -223,13 +207,13 @@ def load_statistics():
         print(f"키워드 통계 결과 개수: {len(keyword_stats)}")
         
         print("시간별 트렌드 쿼리 실행 중...")
-        # 시간별 수집 트렌드 (한국 시간 기준)
-        cursor.execute(f"""
+        # 시간별 수집 트렌드
+        cursor.execute("""
             SELECT 
                 DATE_TRUNC('hour', collected_at) as hour,
                 COUNT(*) as count
             FROM news_articles 
-            WHERE collected_at >= '{korean_24h_ago.strftime('%Y-%m-%d %H:%M:%S')}'::timestamp
+            WHERE collected_at >= NOW() - INTERVAL '24 hours'
             GROUP BY hour 
             ORDER BY hour
         """)
@@ -289,11 +273,6 @@ def kafka_consumer_thread():
 def main():
     # 헤더
     st.title("📰 NewsDeck - 실시간 뉴스 대시보드")
-    
-    # 현재 한국 시간 표시
-    current_korean_time = get_korean_now()
-    st.markdown(f"**현재 시간 (KST):** {current_korean_time.strftime('%Y-%m-%d %H:%M:%S')}")
-    
     st.markdown("---")
     
     # 사이드바 설정
@@ -347,14 +326,7 @@ def main():
         with col4:
             last_update = stats.get('overall', {}).get('last_update')
             if last_update:
-                # UTC 시간을 한국 시간으로 변환
-                if last_update.tzinfo is None:
-                    # naive datetime을 UTC로 가정하고 한국 시간으로 변환
-                    last_update_utc = pytz.UTC.localize(last_update)
-                    last_update_kst = last_update_utc.astimezone(KST)
-                else:
-                    last_update_kst = last_update.astimezone(KST)
-                st.metric("마지막 업데이트 (KST)", last_update_kst.strftime("%H:%M"))
+                st.metric("마지막 업데이트", last_update.strftime("%H:%M"))
     
     st.markdown("---")
     
