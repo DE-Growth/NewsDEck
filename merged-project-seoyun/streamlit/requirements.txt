@@ -1,0 +1,23 @@
+# 웹 대시보드 프레임워크
+streamlit==1.32.0  # Updated: song(1.28.0) → seoyun(1.32.0) 최신 버전 사용
+
+# 데이터 처리 라이브러리
+pandas==2.1.1      # Updated: seoyun(2.0.3) → song(2.1.1) 최신 버전 사용
+numpy==1.24.3      # Added: seoyun에서 추가
+
+# 데이터베이스 연결
+psycopg2-binary==2.9.9  # Updated: song(2.9.7) → seoyun(2.9.9) 최신 버전 사용
+sqlalchemy==2.0.21      # Added: song에서 추가 (ORM 지원)
+
+# 시각화
+plotly==5.19.0     # Updated: song(5.15.0) → seoyun(5.19.0) 최신 버전 사용
+
+# 메시지 큐 & API
+kafka-python==2.0.2     # Added: song에서 추가 (카프카 연결)
+requests==2.31.0        # Added: song에서 추가 (HTTP 요청)
+
+# 설정 관리
+python-dotenv==1.0.0    # Added: song에서 추가 (환경변수 관리)
+
+# 시간대 처리
+pytz==2023.3           # Added: song에서 추가 (시간대 변환)

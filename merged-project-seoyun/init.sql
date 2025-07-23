@@ -1,3 +1,4 @@
+
 -- ================================
 -- Database Initialization Script
 -- 통합 버전: song-test 기반 + seoyunjang 요소 추가
