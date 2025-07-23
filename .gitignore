@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Created by https://www.toptal.com/developers/gitignore/api/python,windows,macos,git
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,windows,macos,git
 
@@ -248,3 +249,22 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/python,windows,macos,git
+=======
+# 환경 변수 파일 (API 키 보호)
+.env
+producer/.env
+
+# Python 가상환경
+venv/
+__pycache__/
+*.pyc
+
+# Docker 볼륨 데이터
+postgres-data/
+logs/
+data/
+
+# OS 파일
+.DS_Store
+Thumbs.db
+>>>>>>> seoyunjang/week1-setup
