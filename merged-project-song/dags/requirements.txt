@@ -1,0 +1,5 @@
+apache-airflow==2.8.1
+psycopg2-binary==2.9.9
+kafka-python==2.0.2
+sqlalchemy==1.4.53
+pandas==2.0.3

@@ -1,0 +1,21 @@
+# NewsDeck 통합 프로젝트 전체 의존성
+# 각 서비스별 requirements.txt도 개별적으로 존재함
+
+# 공통 의존성
+requests==2.31.0
+python-dotenv==1.0.0
+pandas==2.0.3
+
+# Kafka 관련
+kafka-python==2.0.2
+
+# 데이터베이스 관련
+psycopg2-binary==2.9.9
+sqlalchemy==1.4.53
+
+# 웹 및 시각화
+streamlit==1.28.1
+plotly==5.17.0
+
+# Airflow 관련
+apache-airflow==2.8.1
