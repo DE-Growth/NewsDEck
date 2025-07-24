@@ -62,9 +62,9 @@ class IntegratedNewsDashboard:
 
         # 데이터베이스 URL 생성
         self.db_url = f"postgresql://{self.db_config['user']}:{self.db_config['password']}@{self.db_config['host']}:{self.db_config['port']}/{self.db_config['database']}"
-        
+
         # 한국 시간대 설정
-        self.kst = pytz.timezone('Asia/Seoul')
+        self.kst = pytz.timezone("Asia/Seoul")
 
     @st.cache_resource(ttl=300)
     def get_db_engine(_self):
@@ -103,7 +103,9 @@ class IntegratedNewsDashboard:
                         df[col] = pd.to_datetime(df[col])
                         # UTC에서 한국 시간대로 변환
                         if df[col].dt.tz is None:
-                            df[col] = df[col].dt.tz_localize('UTC').dt.tz_convert(_self.kst)
+                            df[col] = (
+                                df[col].dt.tz_localize("UTC").dt.tz_convert(_self.kst)
+                            )
                         else:
                             df[col] = df[col].dt.tz_convert(_self.kst)
 
@@ -206,7 +208,9 @@ class IntegratedNewsDashboard:
                 df["timestamp"] = pd.to_datetime(df["timestamp"])
                 # UTC에서 한국 시간대로 변환
                 if df["timestamp"].dt.tz is None:
-                    df["timestamp"] = df["timestamp"].dt.tz_localize('UTC').dt.tz_convert(_self.kst)
+                    df["timestamp"] = (
+                        df["timestamp"].dt.tz_localize("UTC").dt.tz_convert(_self.kst)
+                    )
                 else:
                     df["timestamp"] = df["timestamp"].dt.tz_convert(_self.kst)
 
@@ -252,9 +256,9 @@ class IntegratedNewsDashboard:
         # 자동 새로고침 개선 (깜박임 방지)
         if auto_refresh:
             # 세션 상태로 마지막 새로고침 시간 추적
-            if 'last_refresh' not in st.session_state:
+            if "last_refresh" not in st.session_state:
                 st.session_state.last_refresh = time.time()
-            
+
             current_time = time.time()
             if current_time - st.session_state.last_refresh >= 30:
                 st.session_state.last_refresh = current_time
@@ -307,7 +311,9 @@ class IntegratedNewsDashboard:
             last_update = overall.get("last_update")
             if last_update:
                 # UTC에서 한국 시간으로 변환
-                last_update_kst = pd.to_datetime(last_update).tz_localize('UTC').tz_convert(self.kst)
+                last_update_kst = (
+                    pd.to_datetime(last_update).tz_localize("UTC").tz_convert(self.kst)
+                )
                 last_update_str = last_update_kst.strftime("%H:%M")
                 status = (
                     "🟢 정상"
@@ -381,9 +387,12 @@ class IntegratedNewsDashboard:
 
         display_df = df_keywords.copy()
         # 한국 시간대로 변환하여 표시
-        display_df["last_collected"] = pd.to_datetime(
-            display_df["last_collected"]
-        ).dt.tz_localize('UTC').dt.tz_convert(self.kst).dt.strftime("%Y-%m-%d %H:%M")
+        display_df["last_collected"] = (
+            pd.to_datetime(display_df["last_collected"])
+            .dt.tz_localize("UTC")
+            .dt.tz_convert(self.kst)
+            .dt.strftime("%Y-%m-%d %H:%M")
+        )
         display_df = display_df.rename(
             columns={
                 "keyword": "키워드",
@@ -394,10 +403,10 @@ class IntegratedNewsDashboard:
 
         # 고정 높이로 테이블 안정화 (깜박임 방지)
         st.dataframe(
-            display_df, 
-            use_container_width=True, 
+            display_df,
+            use_container_width=True,
             hide_index=True,
-            height=300  # 고정 높이 설정
+            height=300,  # 고정 높이 설정
         )
 
     def render_time_series(self, stats: Dict):
@@ -418,7 +427,11 @@ class IntegratedNewsDashboard:
 
         # 시계열 차트 (한국 시간 표시)
         fig_time = px.line(
-            df_hourly, x="hour_kst", y="count", title="시간대별 뉴스 수집량 (KST)", markers=True
+            df_hourly,
+            x="hour_kst",
+            y="count",
+            title="시간대별 뉴스 수집량 (KST)",
+            markers=True,
         )
         fig_time.update_layout(
             xaxis_title="시간 (KST)", yaxis_title="뉴스 수", hovermode="x unified"
@@ -496,13 +509,13 @@ class IntegratedNewsDashboard:
                 with col2:
                     st.write(f"**키워드:** {row['keyword']}")
                     # 한국 시간으로 표시
-                    if pd.notnull(row['collected_at']):
-                        collected_time = row['collected_at']
-                        if hasattr(collected_time, 'tz_localize'):
+                    if pd.notnull(row["collected_at"]):
+                        collected_time = row["collected_at"]
+                        if hasattr(collected_time, "tz_localize"):
                             # 이미 시간대가 적용된 경우
-                            time_str = collected_time.strftime('%m-%d %H:%M (KST)')
+                            time_str = collected_time.strftime("%m-%d %H:%M (KST)")
                         else:
-                            time_str = collected_time.strftime('%m-%d %H:%M (KST)')
+                            time_str = collected_time.strftime("%m-%d %H:%M (KST)")
                         st.write(f"**수집시간:** {time_str}")
                     if row["pub_date"]:
                         st.write(f"**발행일:** {row['pub_date']}")
