@@ -1,5 +1,6 @@
-# 기존 베이스 유지 : airflow-init 서비스 (초기화), producer, streamlit 서비스, .env 파일 설정, init.sql 초기화 방식, airflow/airflow/airflow 데이터베이스 설정\
+# 기존 베이스 유지 : airflow-init 서비스 (초기화), producer, streamlit 서비스, .env 파일 설정, init.sql 초기화 방식, airflow/airflow/airflow 데이터베이스 설정
 # 추가 항목 : 모든 서비스에 restart: unless-stopped 추가 (자동 재시작), PostgreSQL 헬스체크 개선 (30초 간격, 3회 재시도), 컨테이너 이름에 news_ 접두사 (더 명확한 식별), 볼륨에 driver: local 명시
+# 시간대 설정: 모든 서비스에 TZ=Asia/Seoul 환경변수 추가
 
 version: "3.8"
 
@@ -13,6 +14,7 @@ services:
       - "2181:2181"
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
+      - TZ=Asia/Seoul
     volumes:
       - zookeeper-data:/bitnami/zookeeper
     restart: unless-stopped
@@ -34,6 +36,7 @@ services:
       - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka:9092,EXTERNAL://localhost:9093
       - KAFKA_INTER_BROKER_LISTENER_NAME=INTERNAL
       - ALLOW_PLAINTEXT_LISTENER=yes
+      - TZ=Asia/Seoul
     volumes:
       - kafka-data:/bitnami/kafka
     restart: unless-stopped
@@ -49,6 +52,7 @@ services:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
       POSTGRES_DB: airflow
+      TZ: Asia/Seoul
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -73,6 +77,7 @@ services:
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - TZ=Asia/Seoul
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
@@ -93,6 +98,7 @@ services:
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - TZ=Asia/Seoul
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
@@ -111,6 +117,7 @@ services:
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - TZ=Asia/Seoul
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
@@ -124,6 +131,8 @@ services:
       context: ./producer
     env_file:
       - ./.env
+    environment:
+      - TZ=Asia/Seoul
     depends_on:
       kafka:
         condition: service_started
@@ -138,6 +147,8 @@ services:
       context: ./streamlit
     env_file:
       - ./.env
+    environment:
+      - TZ=Asia/Seoul
     ports:
       - "8501:8501"
     depends_on:

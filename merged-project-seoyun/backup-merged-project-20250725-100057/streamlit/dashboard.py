@@ -5,6 +5,10 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import time
+import pytz
+
+# 한국 시간대 설정
+KST = pytz.timezone('Asia/Seoul')
 
 # 페이지 설정
 st.set_page_config(
@@ -20,11 +24,11 @@ def load_data():
     """PostgreSQL에서 뉴스 데이터 로드"""
     try:
         conn = psycopg2.connect(
-            host="localhost",  # WSL2에서 Docker 접근
+            host="postgres",  # Docker 컨테이너명
             port="5432",
-            database="newsdb",
-            user="newsuser",        # ✅ 올바른 사용자명
-            password="newspass"     # ✅ 올바른 비밀번호
+            database="airflow",
+            user="airflow",        
+            password="airflow"     
         )
         
         query = """
@@ -39,10 +43,22 @@ def load_data():
         df = pd.read_sql(query, conn)
         conn.close()
         
-        # 날짜 컬럼 변환
+        # 날짜 컬럼 변환 (한국 시간으로)
         if not df.empty:
-            df['created_at'] = pd.to_datetime(df['created_at'])
-            df['collected_at'] = pd.to_datetime(df['collected_at'])
+            # PostgreSQL의 timestamp를 한국 시간으로 안전하게 변환
+            for col in ['created_at', 'collected_at']:
+                df[col] = pd.to_datetime(df[col])
+                # 이미 타임존이 있는지 확인 후 변환
+                if df[col].dt.tz is None:
+                    # 타임존 정보가 없으면 UTC로 가정하고 한국 시간으로 변환
+                    df[col] = df[col].dt.tz_localize('UTC').dt.tz_convert(KST)
+                else:
+                    # 이미 타임존 정보가 있으면 한국 시간으로 변환
+                    df[col] = df[col].dt.tz_convert(KST)
+            
+            # 표시용 시간 컬럼 추가
+            df['created_at_display'] = df['created_at'].dt.strftime('%Y-%m-%d %H:%M:%S')
+            df['collected_at_display'] = df['collected_at'].dt.strftime('%Y-%m-%d %H:%M:%S')
         
         return df
         
@@ -55,11 +71,11 @@ def get_statistics():
     """통계 데이터 로드"""
     try:
         conn = psycopg2.connect(
-            host="localhost",
+            host="postgres",
             port="5432", 
-            database="newsdb",
-            user="newsuser",        # ✅ 올바른 사용자명
-            password="newspass"     # ✅ 올바른 비밀번호
+            database="airflow",
+            user="airflow",        
+            password="airflow"     
         )
         
         # 키워드별 통계
@@ -75,7 +91,7 @@ def get_statistics():
         
         keyword_df = pd.read_sql(keyword_query, conn)
         
-        # 시간대별 통계 (최근 24시간)
+        # 시간대별 통계 (최근 24시간) - 한국 시간 기준
         hourly_query = """
         SELECT 
             DATE_TRUNC('hour', created_at) as hour,
@@ -87,6 +103,16 @@ def get_statistics():
         """
         
         hourly_df = pd.read_sql(hourly_query, conn)
+        
+        # 시간 컬럼을 한국 시간으로 안전하게 변환
+        if not hourly_df.empty:
+            hourly_df['hour'] = pd.to_datetime(hourly_df['hour'])
+            # 안전한 타임존 변환
+            if hourly_df['hour'].dt.tz is None:
+                hourly_df['hour'] = hourly_df['hour'].dt.tz_localize('UTC').dt.tz_convert(KST)
+            else:
+                hourly_df['hour'] = hourly_df['hour'].dt.tz_convert(KST)
+        
         conn.close()
         
         return keyword_df, hourly_df
@@ -95,10 +121,18 @@ def get_statistics():
         st.error(f"통계 로드 오류: {e}")
         return pd.DataFrame(), pd.DataFrame()
 
+def get_current_kst_time():
+    """현재 한국 시간 반환"""
+    return datetime.now(KST)
+
 # 메인 대시보드
 def main():
     # 제목
     st.title("📰 실시간 뉴스 분석 대시보드")
+    
+    # 현재 한국 시간 표시
+    current_time = get_current_kst_time()
+    st.caption(f"🕐 현재 시간: {current_time.strftime('%Y-%m-%d %H:%M:%S KST')}")
     st.markdown("---")
     
     # 사이드바
@@ -127,14 +161,18 @@ def main():
     with col3:
         latest_time = df['created_at'].max()
         if pd.notna(latest_time):
-            time_diff = datetime.now() - latest_time.to_pydatetime()
+            # 한국 시간 기준으로 시간 차이 계산
+            current_kst = get_current_kst_time()
+            time_diff = current_kst - latest_time
             minutes_ago = int(time_diff.total_seconds() / 60)
             st.metric("⏰ 최신 뉴스", f"{minutes_ago}분 전")
         else:
             st.metric("⏰ 최신 뉴스", "N/A")
     
     with col4:
-        today_count = len(df[df['created_at'].dt.date == datetime.now().date()])
+        # 오늘 뉴스 (한국 시간 기준)
+        today_kst = current_kst.date()
+        today_count = len(df[df['created_at'].dt.date == today_kst])
         st.metric("📅 오늘 뉴스", today_count)
     
     st.markdown("---")
@@ -143,11 +181,12 @@ def main():
     keywords = ['전체'] + list(df['keyword'].unique())
     selected_keyword = st.sidebar.selectbox("🔍 키워드 선택", keywords)
     
-    # 날짜 필터
+    # 날짜 필터 (한국 시간 기준)
+    current_kst_date = current_kst.date()
     date_range = st.sidebar.date_input(
         "📅 날짜 범위",
-        value=(datetime.now().date() - timedelta(days=1), datetime.now().date()),
-        max_value=datetime.now().date()
+        value=(current_kst_date - timedelta(days=1), current_kst_date),
+        max_value=current_kst_date
     )
     
     # 데이터 필터링
@@ -186,7 +225,8 @@ def main():
                     
                     with col2:
                         st.markdown(f"**키워드:** {row['keyword']}")
-                        st.markdown(f"**수집 시간:** {row['created_at'].strftime('%m-%d %H:%M')}")
+                        # 한국 시간으로 표시
+                        st.markdown(f"**수집 시간:** {row['created_at_display']}")
                     
                     st.markdown("---")
     
@@ -222,8 +262,10 @@ def main():
                 hourly_stats, 
                 x='hour', 
                 y='count',
-                title="시간대별 뉴스 수집량"
+                title="시간대별 뉴스 수집량 (한국 시간)"
             )
+            # x축 포맷을 한국 시간으로 설정
+            fig_line.update_xaxes(tickformat='%m-%d %H:%M')
             st.plotly_chart(fig_line, use_container_width=True)
     
     with tab3:
@@ -239,11 +281,23 @@ def main():
         
         for idx, row in recent_news.iterrows():
             st.markdown(f"**[{row['keyword']}]** {row['title']}")
-            st.caption(f"수집 시간: {row['created_at'].strftime('%Y-%m-%d %H:%M:%S')}")
+            # 한국 시간으로 표시
+            st.caption(f"수집 시간: {row['created_at_display']} KST")
             st.markdown("---")
         
         # 자동 새로고침 설정
         st.info("💡 페이지는 수동으로 새로고침됩니다. 실시간 업데이트를 위해 새로고침 버튼을 클릭하세요.")
+        
+        # 시간 동기화 상태 표시
+        st.markdown("### 🕐 시간 동기화 상태")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("현재 한국 시간", current_time.strftime('%H:%M:%S'))
+        with col2:
+            if not df.empty:
+                latest_data_time = df['created_at'].max()
+                data_time_str = latest_data_time.strftime('%H:%M:%S')
+                st.metric("최신 데이터 시간", data_time_str)
 
 if __name__ == "__main__":
     main()
